@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="initial-scale=1.0">
+<title>Picker</title>
+<style>
+body {
+    background:#FFF;
+    color:#000;
+    font-family:verdana, sans-serif;
+    font-size:10pt;
+    margin:0;
+    padding:10px;
+}
+
+a:link, a:visited {
+    color:#008;
+    font-weight:bold;
+    text-decoration:none;
+}
+
+a:active, a:hover {
+    color:#ACF;
+}
+
+.info {
+    font-weight:bold;
+}
+
+button {
+    font-family:inherit;
+    cursor:pointer;
+    border:0;
+    border-radius:3px;
+    padding:0.3em 0.5em;
+    background:#CCC;
+    color:#000;
+}
+
+button:hover {
+    background:#DDD;
+}
+
+button.disabled {
+    background:#DDD;
+    color:#888;
+    cursor:not-allowed;
+}
+
+button.disabled:hover {
+    background:#DDD;
+}
+
+#container {
+    position:relative;
+    margin-left:-10px;
+    margin-right:-10px;
+    padding:10px;
+    overflow:hidden;
+}
+
+@media (min-width:1024px) {
+    /* Put the found favorites beside the picking div when the window is sufficiently large */
+    #picking {
+        float:left;
+        width:636px;
+    }
+
+    #secondary {
+        margin-left:646px;
+    }
+}
+
+@media (min-width:1300px) {
+    /* Once we get to the point where 636px is less than half of the width of the screen, make the picking div just take up half */
+    #picking {
+        width:50%;
+    }
+
+    #secondary {
+        margin-left:51%;
+    }
+}
+
+#pick {
+    background:#58F;
+    color:#FFF;
+    font-size:larger;
+    font-weight:bold;
+    width:6em;
+    border-radius:5px;
+    margin-right:10px;
+}
+
+#pick.disabled {
+    background:#ACF;
+}
+
+#pick:hover {
+    background:#ACF;
+}
+
+.item-list {
+    padding:0;
+    list-style-type:none;
+    line-height:100px;
+}
+
+.item-list li {
+    margin:0;
+    display:inline-block;
+    height:100px;
+    width:100px;
+    line-height:100px;
+    border:3px solid transparent;
+    text-align:center;
+    position:relative;
+    vertical-align:top;
+    overflow:hidden;
+    border-radius:100%;
+    background:#F7F7F7;
+    color:#000;
+}
+
+.item-list li img {
+    vertical-align:middle;
+    max-height:100%;
+    max-width:100%;
+}
+
+.item-list li span {
+    display:inline-block;
+    vertical-align:middle;
+    line-height:1.2;
+}
+
+@media (max-width:636px) {
+    .item-list {
+        line-height:75px;
+    }
+
+    .item-list li {
+        line-height:75px;
+        height:75px;
+        width:75px;
+    }
+}
+
+@media (max-width:423px) {
+    .item-list {
+        line-height:50px;
+    }
+
+    .item-list li {
+        line-height:50px;
+        height:50px;
+        width:50px;
+    }
+}
+
+#evaluating li {
+    cursor:pointer;
+}
+
+#favorites li {
+    cursor:move;
+}
+
+.item-list li:hover {
+    background:#CDF;
+}
+
+.item-list.sorting li:hover {
+    background:#F7F7F7;
+}
+
+#evaluating li.selected {
+    border:3px solid #7AC;
+}
+
+#evaluating, #buttons {
+    text-align:center;
+    margin:auto;
+}
+
+#evaluating li.notice {
+    width:auto;
+    height:auto;
+    max-width:260px;
+    margin:auto;
+    background:#F7F7F7;
+    border-radius:10px;
+    padding:30px 30px;
+    color:#000;
+    text-align:center;
+    line-height:1.4;
+    cursor:auto;
+    font-size:10pt;
+}
+
+#buttons {
+    margin-top:30px;
+    position:relative;
+    z-index:3;
+}
+</style>
+</head>
+<body>
+<h1>Favorite Food Fantasy Food Soul Picker</h1>
+
+<p>Narrow down your favorite food soul!</p>
+
+<p><b>HOW IT WORKS:</b> For each group, select your favourites then press the "Pick" button. Eventually, the program will narrow it down until one favourite remains. That food soul will appear until 'Found Favorites'. If you keep going, eventually you'll create an ordered list of your favourite food souls :)</p>
+
+<p><i>This picker was created using a template provided by antialias. <a href="https://github.com/antialiasis/favorite-picker">The template is on GitHub.</a></i></p>
+
+<p><i><b>Last updated on August 22nd, 2020</i></b></p>
+
+
+<div id="container">
+
+<div id="picking">
+<ul id="evaluating" class="item-list">
+</ul>
+
+<p id="buttons"><button id="pick">Pick</button> <button id="pass">Pass</button> <button id="undo">Undo</button> <button id="redo">Redo</button></p>
+</div>
+
+<div id="secondary">
+<h2>Found favorites</h2>
+
+<ol id="favorites" class="item-list">
+</ol>
+</div>
+</div>
+<script src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
+<script src="picker.js"></script>
+<script src="picker-ui.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.7.0/Sortable.min.js"></script>
+<script>
+'use strict';
+
+var items = [
+
+	// Specials
+	{id: 'boston_lobster_sp', name: 'Boston Lobster (SP)', image: 'profiles/Boston_Lobster_SP.png'},
+	{id: 'rice_sp', name: 'Rice (SP)', image: 'profiles/Rice_SP.png'},
+
+    // Ultra Rares
+	{id: 'apple_pie', name: 'Apple Pie', image: 'profiles/Apple_Pie.png'},
+	{id: 'b-52', name: 'B-52', image: 'profiles/B-52.png'},
+	{id: 'bamboo_rice', name: 'Bamboo Rice', image: 'profiles/Bamboo_Rice.png'},
+	{id: 'bibimbap', name: 'Bibimbap', image: 'profiles/Bibimbap.png'},
+	{id: 'black_truffle', name: 'Black Truffle', image: 'profiles/Black_Truffle.png'},
+	{id: 'blue_cheese', name: 'Blue Cheese', image: 'profiles/Blue_Cheese.png'},
+	{id: 'boston_lobster', name: 'Boston Lobster', image: 'profiles/Boston_Lobster.png'},
+	{id: 'braised_noodles', name: 'Braised Noodles', image: 'profiles/Braised_Noodles.png'},
+	{id: 'buddhas_temptation', name: 'Buddha\'s Temptation', image: 'profiles/Buddhas_Temptation.png'},
+	{id: 'butter_tea', name: 'Butter Tea', image: 'profiles/Butter_Tea.png'},
+	{id: 'candied_birds_nest', name: 'Candied Bird\'s Nest', image: 'profiles/Candied_Birds_Nest.png'},
+	{id: 'candy_cane', name: 'Candy Cane', image: 'profiles/Candy_Cane.png'},
+	{id: 'canele', name: 'Canele', image: 'profiles/Canele.png'},
+	{id: 'caviar', name: 'Caviar', image: 'profiles/Caviar.png'},
+	{id: 'champagne', name: 'Champagne', image: 'profiles/Champagne.png'},
+	{id: 'cloud_tea', name: 'Cloud Tea', image: 'profiles/Cloud_Tea.png'},
+	{id: 'cookie', name: 'Cookie', image: 'profiles/Cookie.png'},
+	{id: 'cordyceps', name: 'Cordyceps', image: 'profiles/Cordyceps.png'},
+	{id: 'crab_long_bao', name: 'Crab Long Bao', image: 'profiles/Crab_Long_Bao.png'},
+	{id: 'croissant', name: 'Croissant', image: 'profiles/Croissant.png'},
+	{id: 'double_scoop', name: 'Double Scoop', image: 'profiles/Double_Scoop.png'},
+	{id: 'dragon_and_phoenix', name: 'Dragon & Phoenix', image: 'profiles/Dragon_and_Phoenix.png'},
+	{id: 'dragons_beard_candy', name: 'Dragon\'s Beard Candy', image: 'profiles/Dragons_Beard_Candy.png'},
+	{id: 'durian_pancake', name: 'Durian Pancake', image: 'profiles/Durian_Pancake.png'},
+	{id: 'fire_crystal_persimmon_cake', name: 'Fire Crystal Persimmon Cake', image: 'profiles/Fire_Crystal_Persimmon_Cake.png'},
+	{id: 'foie_gras', name: 'Foie Gras', image: 'profiles/Foie_Gras.png'},
+	{id: 'fruit_tart', name: 'Fruit Tart', image: 'profiles/Fruit_Tart.png'},
+	{id: 'gingerbread', name: 'Gingerbread', image: 'profiles/Gingerbread.png'},
+	{id: 'hishi_mochi', name: 'Hishi Mochi', image: 'profiles/Hishi_Mochi.png'},
+	{id: 'huangshan_maofeng_tea', name: 'Huangshan Maofeng Tea', image: 'profiles/Huangshan_Maofeng_Tea.png'},
+	{id: 'inarizushi', name: 'Inarizushi', image: 'profiles/Inarizushi.png'},
+	{id: 'junmai_daiginjo', name: 'Junmai Daiginjo', image: 'profiles/Junmai_Daiginjo.png'},
+	{id: 'longjing_tea', name: 'Longjing Tea', image: 'profiles/longjing_tea.png'},
+	{id: 'longxi_cured_ham', name: 'Longxi Cured Ham', image: 'profiles/Longxi_Cured_Ham.png'},
+	{id: 'matcha', name: 'Matcha', image: 'profiles/Matcha.png'},
+	{id: 'matsutake_dobinmushi', name: 'Matsutake Dobinmushi', image: 'profiles/Matsutake_Dobinmushi.png'},
+	{id: 'mapo_tofu', name: 'Mapo Tofu', image: 'profiles/Mapo_Tofu.png'},
+	{id: 'martini', name: 'Martini', image: 'profiles/Martini.png'},
+	{id: 'milt', name: 'Milt', image: 'profiles/Milt.png'},
+	{id: 'minestrone', name: 'Minestrone', image: 'profiles/Minestrone.png'},
+	{id: 'nagashi_somen', name: 'Nagashi_Somen', image: 'profiles/Nagashi_Somen.png'},
+	{id: 'nanjing_roast_duck', name: 'Nanjing Roast Duck', image: 'profiles/Nanjing_Roast_Duck.png'},
+	{id: 'natto', name: 'Natto', image: 'profiles/Natto.png'},
+	{id: 'osechi', name: 'Osechi', image: 'profiles/Osechi.png'},
+	{id: 'oyster', name: 'Oyster', image: 'profiles/Oyster.png'},
+	{id: 'peking_duck', name: 'Peking Duck', image: 'profiles/Peking_Duck.png'},
+	{id: 'pizza', name: 'Pizza', image: 'profiles/Pizza.png'},
+	{id: 'pollock_roe', name: 'Pollock Roe', image: 'profiles/Pollock_Roe.png'},
+	{id: 'raindrop_cake', name: 'Raindrop Cake', image: 'profiles/Raindrop_Cake.png'},
+	{id: 'rum', name: 'Rum', image: 'profiles/Rum.png'},
+	{id: 'sakura_tea', name: 'Sakura Tea', image: 'profiles/Sakura_Tea.png'},
+	{id: 'sichuan_hotpot', name: 'Sichuan Hotpot', image: 'profiles/Sichuan_Hotpot.png'},
+	{id: 'souffle', name: 'Souffle', image: 'profiles/Souffle.png'},
+	{id: 'stargazy_pie', name: 'Stargazy Pie', image: 'profiles/Stargazy_Pie.png'},
+	{id: 'steamed_wuchang_fish', name: 'Steamed Wuchang Fish', image: 'profiles/Steamed_Wuchang_Fish.png'},
+	{id: 'swiss_roll', name: 'Swiss Roll', image: 'profiles/Swiss_Roll.png'},
+	{id: 'toso', name: 'Toso', image: 'profiles/Toso.png'},
+	{id: 'tteokguk', name: 'Tteokguk', image: 'profiles/Tteokguk.png'},
+	{id: 'turducken', name: 'Turducken', image: 'profiles/Turducken.png'},
+	{id: 'turkey', name: 'Turkey', image: 'profiles/Turkey.png'},
+	{id: 'whisky', name: 'Whisky', image: 'profiles/Whisky.png'},
+	{id: 'white_truffle', name: 'White Truffle', image: 'profiles/White_Truffle.png'},
+	{id: 'wuyi_da_hong_pao', name: 'Wuyi Da Hong Pao', image: 'profiles/Wuyi_Da_Hong_Pao.png'},
+	{id: 'yuba_vegetable_spring_roll', name: 'Yuba Vegetable Spring Roll', image: 'profiles/Yuba_Vegetable_Spring_Roll.png'},
+	
+	// Super Rares
+	{id: 'american_corn_bread', name: 'American Corn Bread', image: 'profiles/American_Corn_Bread.png'},
+	{id: 'awamori', name: 'Awamori', image: 'profiles/Awamori.png'},
+	{id: 'baguette', name: 'Baguette', image: 'profiles/Baguette.png'},
+	{id: 'beer', name: 'Beer', image: 'profiles/Beer.png'},
+	{id: 'beggars_chicken', name: 'Beggar\'s Chicken', image: 'profiles/Beggars_Chicken.png'},
+	{id: 'black_forest_cake', name: 'Black Forest Cake', image: 'profiles/Black_Forest_Cake.png'},
+	{id: 'black_pudding', name: 'Black Pudding', image: 'profiles/Black_Pudding.png'},
+	{id: 'black_tea', name: 'Black Tea', image: 'profiles/Black_Tea.png'},
+	{id: 'bloody_mary', name: 'Bloody Mary', image: 'profiles/Bloody_Mary.png'},
+	{id: 'bonito_rice', name: 'Bonito Rice', image: 'profiles/Bonito_Rice.png'},
+	{id: 'borscht', name: 'Borscht', image: 'profiles/Borscht.png'},
+	{id: 'brownie', name: 'Brownie', image: 'profiles/Brownie.png'},
+	{id: 'candied_lotus_seed', name: 'Candied Lotus Seed', image: 'profiles/Candied_Lotus_Seed.png'},
+	{id: 'candy_apple', name: 'Candy Apple', image: 'profiles/Candy_Apple.png'},
+	{id: 'cappuccino', name: 'Cappuccino', image: 'profiles/Cappuccino.png'},
+	{id: 'cassata', name: 'Cassata', image: 'profiles/Cassata.png'},
+	{id: 'century_egg', name: 'Century Egg', image: 'profiles/Century_Egg.png'},
+	{id: 'chicken_strip_soup', name: 'Chicken Strip Soup', image: 'profiles/Chicken_Strip_Soup.png'},
+	{id: 'chishui_moth_tea', name: 'Chishui Moth Tea', image: 'profiles/Chishui_Moth_Tea.png'},
+	{id: 'chocolate', name: 'Chocolate', image: 'profiles/Chocolate.png'},
+	{id: 'chrysanthemum_wine', name: 'Chrysanthemum Wine', image: 'profiles/Chrysanthemum_Wine.png'},
+	{id: 'ddeokbokki', name: 'Ddeokbokki', image: 'profiles/Ddeokbokki.png'},
+	{id: 'dongtang', name: 'Dongtang', image: 'profiles/Dongtang.png'},
+	{id: 'donut', name: 'Donut', image: 'profiles/Donut.png'},
+	{id: 'easter_egg', name: 'Easter Egg', image: 'profiles/Easter_Egg.png'},
+	{id: 'eggette', name: 'Eggette', image: 'profiles/Eggette.png'},
+	{id: 'eggnog', name: 'Eggnog', image: 'profiles/Eggnog.png'},
+	{id: 'escargot', name: 'Escargot', image: 'profiles/Escargot.png'},
+	{id: 'fish_and_chips', name: 'Fish and Chips', image: 'profiles/Fish_and_Chips.png'},
+	{id: 'fondant_cake', name: 'Fondant Cake', image: 'profiles/Fondant_Cake.png'},
+	{id: 'fried_chicken', name: 'Fried Chicken', image: 'profiles/Fried_Chicken.png'},
+	{id: 'fried_tofu_puff', name: 'Fried Tofu Puff', image: 'profiles/Fried_Tofu_Puff.png'},
+	{id: 'ginger_milk_pudding', name: 'Ginger Milk Pudding', image: 'profiles/Ginger_Milk_Pudding.png'},
+	{id: 'green_curry', name: 'Green Curry', image: 'profiles/Green_Curry.png'},
+	{id: 'gyoza', name: 'Gyoza', image: 'profiles/Gyoza.png'},
+	{id: 'gyudon', name: 'Gyudon', image: 'profiles/Gyudon.png'},
+	{id: 'hamburger', name: 'Hamburger', image: 'profiles/Hamburger.png'},
+	{id: 'hardtack_biscuit', name: 'Hardtack Biscuit', image: 'profiles/Hardtack_Biscuit.png'},
+	{id: 'hotdog', name: 'Hotdog', image: 'profiles/Hotdog.png'},
+	{id: 'jinhua_ham', name: 'Jinhua Ham', image: 'profiles/Jinhua_Ham.png'},
+	{id: 'kashiwa_mochi', name: 'Kashiwa Mochi', image: 'profiles/Kashiwa_Mochi.png'},
+	{id: 'kimchi', name: 'Kimchi', image: 'profiles/Kimchi.png'},
+	{id: 'laba_congee', name: 'Laba Congee', image: 'profiles/Laba_Congee.png'},
+	{id: 'laba_noodles', name: 'Laba Noodles', image: 'profiles/Laba_Noodles.png'},
+	{id: 'lions_head', name: 'Lion\'s Head', image: 'profiles/Lions_Head.png'},
+	{id: 'mandarin_squirrel_fish', name: 'Mandarin Squirrel Fish', image: 'profiles/Mandarin_Squirrel_Fish.png'},
+	{id: 'mango_pomelo_sago', name: 'Mango Pomelo Sago', image: 'profiles/Mango_Pomelo_Sago.png'},
+	{id: 'mango_pudding', name: 'Mango Pudding', image: 'profiles/Mango_Pudding.png'},
+	{id: 'margarita', name: 'Margarita', image: 'profiles/Margarita.png'},
+	{id: 'marshmallow', name: 'Marshmallow', image: 'profiles/Marshmallow.png'},
+	{id: 'mashed_potatoes', name: 'Mashed Potatoes', image: 'profiles/Mashed_Potatoes.png'},
+	{id: 'milk_tea', name: 'Milk Tea', image: 'profiles/Milk_Tea.png'},
+	{id: 'mixed_fish_soup', name: 'Mixed Fish Soup', image: 'profiles/Mixed_Fish_Soup.png'},
+	{id: 'moon_cake', name: 'Moon Cake', image: 'profiles/Moon_Cake.png'},
+	{id: 'muenchner_weisswurst', name: 'Muenchner Weisswurst', image: 'profiles/Muenchner_Weisswurst.png'},
+	{id: 'mung_bean_soup', name: 'Mung Bean Soup', image: 'profiles/Mung_Bean_Soup.png'},
+	{id: 'napoleon_cake', name: 'Napoleon Cake', image: 'profiles/Napoleon_Cake.png'},
+	{id: 'okonomiyaki', name: 'Okonomiyaki', image: 'profiles/Okonomiyaki.png'},
+	{id: 'opera_cake', name: 'Opera Cake', image: 'profiles/Opera_Cake.png'},
+	{id: 'osmanthus_cake', name: 'Osmanthus Cake', image: 'profiles/Osmanthus_Cake.png'},
+	{id: 'pad_thai', name: 'Pad Thai', image: 'profiles/Pad_Thai.png'},
+	{id: 'parfait', name: 'Parfait', image: 'profiles/Parfait.png'},
+	{id: 'pastel_de_nata', name: 'Pastel de Nata', image: 'profiles/Pastel_de_Nata.png'},
+	{id: 'pineapple_bun', name: 'Pineapple Bun', image: 'profiles/Pineapple_Bun.png'},
+	{id: 'pineapple_cake', name: 'Pineapple Cake', image: 'profiles/Pineapple_Cake.png'},
+	{id: 'pretzel', name: 'Pretzel', image: 'profiles/Pretzel.png'},
+	{id: 'qingtuan', name: 'Qingtuan', image: 'profiles/Qingtuan.png'},
+	{id: 'realgar_wine', name: 'Realgar Wine', image: 'profiles/Realgar_Wine.png'},
+	{id: 'red_wine', name: 'Red Wine', image: 'profiles/Red_Wine.png'},
+	{id: 'sachertorte', name: 'Sachertorte', image: 'profiles/Sachertorte.png'},
+	{id: 'salad', name: 'Salad', image: 'profiles/Salad.png'},
+	{id: 'salt_n_pepper_shrimp', name: 'Salt \'n Pepper Shrimp', image: 'profiles/Salt_n_Pepper_Shrimp.png'},
+	{id: 'salty_tofu', name: 'Salty Tofu', image: 'profiles/Salty_Tofu.png'},
+	{id: 'sanma', name: 'Sanma', image: 'profiles/Sanma.png'},
+	{id: 'seaweed_soup', name: 'Seaweed Soup', image: 'profiles/Seaweed_Soup.png'},
+	{id: 'shengjian', name: 'Shengjian', image: 'profiles/Shengjian.png'},
+	{id: 'snowskin_mooncake', name: 'Snowskin Mooncake', image: 'profiles/Snowskin_Mooncake.png'},
+	{id: 'soba', name: 'Soba', image: 'profiles/Soba.png'},
+	{id: 'soft_serve_cone', name: 'Soft Serve Cone', image: 'profiles/Soft_Serve_Cone.png'},
+	{id: 'soka_senbei', name: 'Soka Senbei', image: 'profiles/Soka_Senbei.png'},
+	{id: 'spaghetti', name: 'Spaghetti', image: 'profiles/Spaghetti.png'},
+	{id: 'steak', name: 'Steak', image: 'profiles/Steak.png'},
+	{id: 'sukiyaki', name: 'Sukiyaki', image: 'profiles/Sukiyaki.png'},
+	{id: 'surstromming', name: 'Surströmming', image: 'profiles/Surstromming.png'},
+	{id: 'sushi', name: 'Sushi', image: 'profiles/Sushi.png'},
+	{id: 'sweet_and_sour_fish', name: 'Sweet & Sour Fish', image: 'profiles/Sweet_and_Sour_Fish.png'},
+	{id: 'sweet_tofu', name: 'Sweet Tofu', image: 'profiles/Sweet_Tofu.png'},
+	{id: 'tangyuan', name: 'Tangyuan', image: 'profiles/Tangyuan.png'},
+	{id: 'tequila', name: 'Tequila', image: 'profiles/Tequila.png'},
+	{id: 'tiramisu', name: 'Tiramisu', image: 'profiles/Tiramisu.png'},
+	{id: 'tonkotsu_ramen', name: 'Tonkotsu Ramen', image: 'profiles/Tonkotsu_Ramen.png'},
+	{id: 'tortoise_jelly', name: 'Tortoise Jelly', image: 'profiles/Tortoise_Jelly.png'},
+	{id: 'tsukimi_dango', name: 'Tsukimi Dango', image: 'profiles/Tsukimi_Dango.png'},
+	{id: 'udon', name: 'Udon', image: 'profiles/Udon.png'},
+	{id: 'umeshu', name: 'Umeshu', image: 'profiles/Umeshu.png'},
+	{id: 'unadon', name: 'Unadon', image: 'profiles/Unadon.png'},
+	{id: 'vodka', name: 'Vodka', image: 'profiles/Vodka.png'},
+	{id: 'wakame', name: 'Wakame', image: 'profiles/Wakame.png'},
+	{id: 'waffle', name: 'Waffle', image: 'profiles/Waffle.png'},
+	{id: 'wensi_tofu', name: 'Wensi Tofu', image: 'profiles/Wensi_Tofu.png'},
+	{id: 'wonton', name: 'Wonton', image: 'profiles/Wonton.png'},
+	{id: 'yogurt', name: 'Yogurt', image: 'profiles/Yogurt.png'},
+	{id: 'yunnan_noodles', name: 'Yunnan Noodles', image: 'profiles/Yunnan_Noodles.png'},
+	{id: 'yuxiang', name: 'Yuxiang', image: 'profiles/Yuxiang.png'},
+	{id: 'zitui_bun', name: 'Zitui Bun', image: 'profiles/Zitui_Bun.png'},
+	
+	// Rares
+	{id: 'coffee', name: 'Coffee', image: 'profiles/Coffee.png'},
+	{id: 'cola', name: 'Cola', image: 'profiles/Cola.png'},
+	{id: 'cold_rice_shrimp', name: 'Cold Rice Shrimp', image: 'profiles/Cold_Rice_Shrimp.png'},
+	{id: 'crepe', name: 'Crepe', image: 'profiles/Crepe.png'},
+	{id: 'dorayaki', name: 'Dorayaki', image: 'profiles/Dorayaki.png'},
+	{id: 'double-ninth_cake', name: 'Double-Ninth Cake', image: 'profiles/Double-Ninth_cake.png'},
+	{id: 'double_skin_milk', name: 'Double Skin Milk', image: 'profiles/Double_Skin_Milk.png'},
+	{id: 'eclair', name: 'Eclair', image: 'profiles/Eclair.png'},
+	{id: 'instant_noodles', name: 'Instant Noodles', image: 'profiles/Instant_Noodles.png'},
+	{id: 'jiuniang', name: 'Jiuniang', image: 'profiles/Jiuniang.png'},
+	{id: 'long_bao', name: 'Long Bao', image: 'profiles/Long_Bao.png'},
+	{id: 'macaron', name: 'Macaron', image: 'profiles/Macaron.png'},
+	{id: 'milk', name: 'Milk', image: 'profiles/Milk.png'},
+	{id: 'miso_soup', name: 'Miso Soup', image: 'profiles/Miso_Soup.png'},
+	{id: 'nasi_lemak', name: 'Nasi Lemak', image: 'profiles/Nasi_Lemak.png'},
+	{id: 'omurice', name: 'Omurice', image: 'profiles/Omurice.png'},
+	{id: 'orange_juice', name: 'Orange Juice', image: 'profiles/Orange_Juice.png'},
+	{id: 'plum_juice', name: 'Plum Juice', image: 'profiles/Plum_Juice.png'},
+	{id: 'sake', name: 'Sake', image: 'profiles/Sake.png'},
+	{id: 'sakuramochi', name: 'Sakuramochi', image: 'profiles/Sakuramochi.png'},
+	{id: 'sashimi', name: 'Sashimi', image: 'profiles/Sashimi.png'},
+	{id: 'spicy_gluten', name: 'Spicy Gluten', image: 'profiles/Spicy_Gluten.png'},
+	{id: 'taiyaki', name: 'Taiyaki', image: 'profiles/Taiyaki.png'},
+	{id: 'tempura', name: 'Tempura', image: 'profiles/Tempura.png'},
+	{id: 'tom_yum', name: 'Tom Yum', image: 'profiles/Tom_Yum.png'},
+	{id: 'ume_ochazuke', name: 'Ume Ochazuke', image: 'profiles/Ume_Ochazuke.png'},
+	{id: 'yakitori', name: 'Yakitori', image: 'profiles/Yakitori.png'},
+	{id: 'yellow_pea_cake', name: 'Yellow Pea Cake', image: 'profiles/Yellow_Pea_Cake.png'},
+	{id: 'yellow_wine', name: 'Yellow Wine', image: 'profiles/Yellow_Wine.png'},
+	{id: 'zongzi', name: 'Zongzi', image: 'profiles/Zongzi.png'},
+	
+	// Managers
+	
+	{id: 'almond_tofu', name: 'Almond Tofu', image: 'profiles/Almond_Tofu.png'},
+	{id: 'bak_kut_teh', name: 'Bak Kut Teh', image: 'profiles/Bak_Kut_Teh.png'},
+	{id: 'cheese', name: 'Cheese', image: 'profiles/Cheese.png'},
+	{id: 'doenjang_jjigae', name: 'Doenjang Jjigae', image: 'profiles/Doenjang_Jjigae.png'},
+	{id: 'hawthorne_ball', name: 'Hawthorne Ball', image: 'profiles/Hawthorne_Ball.png'},
+	{id: 'jianbing_guozi', name: 'Jianbing Guozi', image: 'profiles/Jianbing_Guozi.png'},
+	{id: 'jello', name: 'Jello', image: 'profiles/Jello.png'},
+	{id: 'mousse', name: 'Mousse', image: 'profiles/Mousse.png'},
+	{id: 'oden', name: 'Oden', image: 'profiles/Oden.png'},
+	{id: 'pancake', name: 'Pancake', image: 'profiles/Pancake.png'},
+	{id: 'popcorn', name: 'Popcorn', image: 'profiles/Popcorn.png'},
+	{id: 'pudding', name: 'Pudding', image: 'profiles/Pudding.png'},
+	{id: 'rice', name: 'Rice', image: 'profiles/Rice.png'},
+	{id: 'sandwich', name: 'Sandwich', image: 'profiles/Sandwich.png'},
+	{id: 'skewer', name: 'Skewer', image: 'profiles/Skewer.png'},
+	{id: 'strawberry_daifuku', name: 'Strawberry Daifuku', image: 'profiles/Strawberry_Daifuku.png'},
+	{id: 'takoyaki', name: 'Takoyaki', image: 'profiles/Takoyaki.png'},
+	{id: 'toast', name: 'Toast', image: 'profiles/Toast.png'}
+	
+];
+
+var myPicker = new picker.Picker({
+    items: items,
+    localStorageKey: 'picker-state'
+});
+
+var pickerUI = new PickerUI(myPicker, {
+    elements: {
+        pick: "#pick",
+        pass: "#pass",
+        undo: "#undo",
+        redo: "#redo",
+        evaluating: "#evaluating",
+        favorites: "#favorites"
+    }
+});
+
+pickerUI.initialize();
+
+/* Sortable favorites - you can safely remove this, and the Sortable.min.js script, if you don't want to be able to sort your favorite list. */
+var sortable = new Sortable(pickerUI.elem.favorites.get(0), {
+    draggable: '.item',
+    animation: 100,
+    onStart: function() {
+        pickerUI.elem.favorites.addClass("sorting");
+    },
+    onEnd: function() {
+        pickerUI.elem.favorites.removeClass("sorting");
+    },
+    onUpdate: function() {
+        myPicker.setFavorites(pickerUI.elem.favorites.children().map(function() {
+            return pickerUI.getItem(this);
+        }).get());
+        pickerUI.update(true);
+    }
+});
+/* End sortable favorites */
+</script>
+</body>
+</html>
